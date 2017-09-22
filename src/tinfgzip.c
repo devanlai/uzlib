@@ -48,14 +48,14 @@ void tinf_skip_bytes(TINF_DATA *d, int num)
 
 uint16_t tinf_get_uint16(TINF_DATA *d)
 {
-    unsigned int v = uzlib_get_byte(d);
+    uint16_t v = uzlib_get_byte(d);
     v = (uzlib_get_byte(d) << 8) | v;
     return v;
 }
 
-int uzlib_gzip_parse_header(TINF_DATA *d)
+TINF_STATUS uzlib_gzip_parse_header(TINF_DATA *d)
 {
-    unsigned char flg;
+    uint8_t flg;
 
     /* -- check format -- */
 
@@ -79,8 +79,8 @@ int uzlib_gzip_parse_header(TINF_DATA *d)
     /* skip extra data if present */
     if (flg & FEXTRA)
     {
-       unsigned int xlen = tinf_get_uint16(d);
-       tinf_skip_bytes(d, xlen);
+        unsigned int xlen = tinf_get_uint16(d);
+        tinf_skip_bytes(d, xlen);
     }
 
     /* skip file name if present */
@@ -92,9 +92,10 @@ int uzlib_gzip_parse_header(TINF_DATA *d)
     /* check header crc if present */
     if (flg & FHCRC)
     {
-       unsigned int hcrc = tinf_get_uint16(d);
+        uint16_t hcrc = tinf_get_uint16(d);
 
         // TODO: Check!
+        (void)hcrc;
 //       if (hcrc != (tinf_crc32(src, start - src) & 0x0000ffff))
 //          return TINF_DATA_ERROR;
     }

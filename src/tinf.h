@@ -11,6 +11,7 @@
 #ifndef TINF_H_INCLUDED
 #define TINF_H_INCLUDED
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* calling convention */
@@ -26,62 +27,66 @@
 extern "C" {
 #endif
 
-/* ok status, more data produced */
-#define TINF_OK             0
-/* end of compressed stream reached */
-#define TINF_DONE           1
-#define TINF_DATA_ERROR    (-3)
-#define TINF_CHKSUM_ERROR  (-4)
+typedef enum {
+    /* ok status, more data produced */
+    TINF_OK = 0,
+    /* end of compressed stream reached */
+    TINF_DONE = 1,
+    TINF_DATA_ERROR = -3,
+    TINF_CHKSUM_ERROR = -4
+} TINF_STATUS;
 
 /* checksum types */
-#define TINF_CHKSUM_NONE  0
-#define TINF_CHKSUM_ADLER 1
-#define TINF_CHKSUM_CRC   2
+typedef enum {
+    TINF_CHKSUM_NONE = 0,
+    TINF_CHKSUM_ADLER = 1,
+    TINF_CHKSUM_CRC = 2,
+} TINF_CHKSUM_TYPE;
 
 /* data structures */
 
 typedef struct {
-   unsigned short table[16];  /* table of code length counts */
-   unsigned short trans[288]; /* code -> symbol translation table */
+   uint16_t table[16];  /* table of code length counts */
+   uint16_t trans[288]; /* code -> symbol translation table */
 } TINF_TREE;
 
 struct TINF_DATA;
 typedef struct TINF_DATA {
-   const unsigned char *source;
+   const uint8_t *source;
    /* If source above is NULL, this function will be used to read
       next byte from source stream */
-   unsigned int (*readSourceByte)(struct TINF_DATA *data, unsigned char *out);
+   TINF_STATUS (*readSourceByte)(struct TINF_DATA *data, uint8_t *out);
 
    unsigned int tag;
    unsigned int bitcount;
 
     /* Buffer start */
-    unsigned char *destStart;
+    uint8_t *destStart;
     /* Buffer total size */
-    unsigned int destSize;
+    size_t destSize;
     /* Current pointer in buffer */
-    unsigned char *dest;
+    uint8_t *dest;
     /* Remaining bytes in buffer */
-    unsigned int destRemaining;
+    size_t destRemaining;
 
     /* if readDest is provided, it will use this function for
        reading from the output stream, rather than assuming
        'dest' contains the entire output stream in memory
     */
-   unsigned int (*readDestByte)(int offset, unsigned char *out);
-   unsigned int (*writeDestWord)(unsigned long data);
+    TINF_STATUS (*readDestByte)(int offset, uint8_t *out);
+    TINF_STATUS (*writeDestWord)(unsigned long data);
 
     /* Accumulating checksum */
-    unsigned int checksum;
-    char checksum_type;
+    uint32_t checksum;
+    TINF_CHKSUM_TYPE checksum_type;
 
     int btype;
     int bfinal;
     unsigned int curlen;
     int lzOff;
-    unsigned char *dict_ring;
-    unsigned int dict_size;
-    unsigned int dict_idx;
+    uint8_t *dict_ring;
+    size_t dict_size;
+    size_t dict_idx;
 
    TINF_TREE ltree; /* dynamic length/symbol tree */
    TINF_TREE dtree; /* dynamic distance tree */
@@ -93,28 +98,28 @@ typedef struct TINF_DATA {
         if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
     }
 
-unsigned char TINFCC uzlib_get_byte(TINF_DATA *d);
+uint8_t TINFCC uzlib_get_byte(TINF_DATA *d);
 
 /* Decompression API */
 
 void TINFCC uzlib_init(void);
-void TINFCC uzlib_uncompress_init(TINF_DATA *d, void *dict, unsigned int dictLen);
-int  TINFCC uzlib_uncompress(TINF_DATA *d);
-int  TINFCC uzlib_uncompress_chksum(TINF_DATA *d);
+void TINFCC uzlib_uncompress_init(TINF_DATA *d, void *dict, size_t dictLen);
+TINF_STATUS TINFCC uzlib_uncompress(TINF_DATA *d);
+TINF_STATUS TINFCC uzlib_uncompress_chksum(TINF_DATA *d);
 
-int TINFCC uzlib_zlib_parse_header(TINF_DATA *d);
-int TINFCC uzlib_gzip_parse_header(TINF_DATA *d);
+uint8_t TINFCC uzlib_zlib_parse_header(TINF_DATA *d);
+TINF_STATUS TINFCC uzlib_gzip_parse_header(TINF_DATA *d);
 
 /* Compression API */
 
-void TINFCC uzlib_compress(void *data, const uint8_t *src, unsigned slen);
+void TINFCC uzlib_compress(void *data, const uint8_t *src, size_t slen);
 
 /* Checksum API */
 
 /* prev_sum is previous value for incremental computation, 1 initially */
-uint32_t TINFCC uzlib_adler32(const void *data, unsigned int length, uint32_t prev_sum);
+uint32_t TINFCC uzlib_adler32(const void *data, size_t length, uint32_t prev_sum);
 /* crc is previous value for incremental computation, 0xffffffff initially */
-uint32_t TINFCC uzlib_crc32(const void *data, unsigned int length, uint32_t crc);
+uint32_t TINFCC uzlib_crc32(const void *data, size_t length, uint32_t crc);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -45,35 +45,35 @@ uint32_t tinf_get_be_uint32(TINF_DATA *d);
 #ifdef RUNTIME_BITS_TABLES
 
 /* extra bits and base tables for length codes */
-unsigned char length_bits[30];
-unsigned short length_base[30];
+uint8_t length_bits[30];
+uint16_t length_base[30];
 
 /* extra bits and base tables for distance codes */
-unsigned char dist_bits[30];
-unsigned short dist_base[30];
+uint8_t char dist_bits[30];
+uint16_t dist_base[30];
 
 #else
 
-const unsigned char length_bits[30] = {
+const uint8_t length_bits[30] = {
    0, 0, 0, 0, 0, 0, 0, 0,
    1, 1, 1, 1, 2, 2, 2, 2,
    3, 3, 3, 3, 4, 4, 4, 4,
    5, 5, 5, 5
 };
-const unsigned short length_base[30] = {
+const uint16_t length_base[30] = {
    3, 4, 5, 6, 7, 8, 9, 10,
    11, 13, 15, 17, 19, 23, 27, 31,
    35, 43, 51, 59, 67, 83, 99, 115,
    131, 163, 195, 227, 258
 };
 
-const unsigned char dist_bits[30] = {
+const uint8_t dist_bits[30] = {
    0, 0, 0, 0, 1, 1, 2, 2,
    3, 3, 4, 4, 5, 5, 6, 6,
    7, 7, 8, 8, 9, 9, 10, 10,
    11, 11, 12, 12, 13, 13
 };
-const unsigned short dist_base[30] = {
+const uint16_t dist_base[30] = {
    1, 2, 3, 4, 5, 7, 9, 13,
    17, 25, 33, 49, 65, 97, 129, 193,
    257, 385, 513, 769, 1025, 1537, 2049, 3073,
@@ -83,7 +83,7 @@ const unsigned short dist_base[30] = {
 #endif
 
 /* special ordering of code length codes */
-const unsigned char clcidx[] = {
+const uint8_t clcidx[] = {
    16, 17, 18, 0, 8, 7, 9, 6,
    10, 5, 11, 4, 12, 3, 13, 2,
    14, 1, 15
@@ -95,7 +95,7 @@ const unsigned char clcidx[] = {
 
 #ifdef RUNTIME_BITS_TABLES
 /* build extra bits and base tables */
-static void tinf_build_bits_base(unsigned char *bits, unsigned short *base, int delta, int first)
+static void tinf_build_bits_base(uint8_t *bits, uint16_t *base, int delta, int first)
 {
    int i, sum;
 
@@ -138,9 +138,9 @@ static void tinf_build_fixed_trees(TINF_TREE *lt, TINF_TREE *dt)
 }
 
 /* given an array of code lengths, build a tree */
-static void tinf_build_tree(TINF_TREE *t, const unsigned char *lengths, unsigned int num)
+static void tinf_build_tree(TINF_TREE *t, const uint8_t *lengths, unsigned int num)
 {
-   unsigned short offs[16];
+   uint16_t offs[16];
    unsigned int i, sum;
 
    /* clear code length count table */
@@ -169,13 +169,13 @@ static void tinf_build_tree(TINF_TREE *t, const unsigned char *lengths, unsigned
  * -- decode functions -- *
  * ---------------------- */
 
-unsigned char uzlib_get_byte(TINF_DATA *d)
+uint8_t uzlib_get_byte(TINF_DATA *d)
 {
     if (d->source) {
         return *d->source++;
     } else {
-      unsigned char out;
-      int ret = d->readSourceByte(d, &out);
+      uint8_t out;
+      d->readSourceByte(d, &out);
       return out;
     }    
 }
@@ -261,7 +261,7 @@ static int tinf_decode_symbol(TINF_DATA *d, TINF_TREE *t)
 /* given a data stream, decode dynamic trees from it */
 static void tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 {
-   unsigned char lengths[288+32];
+   uint8_t lengths[288+32];
    unsigned int hlit, hdist, hclen;
    unsigned int i, num, length;
 
@@ -298,7 +298,7 @@ static void tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
       case 16:
          /* copy previous code length 3-6 times (read 2 bits) */
          {
-            unsigned char prev = lengths[num - 1];
+            uint8_t prev = lengths[num - 1];
             for (length = tinf_read_bits(d, 2, 3); length; --length)
             {
                lengths[num++] = prev;
@@ -336,7 +336,7 @@ static void tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
  * ----------------------------- */
 
 /* given a stream and two trees, inflate a block of data */
-static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
+static TINF_STATUS tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 {
     if (d->curlen == 0) {
         unsigned int offs;
@@ -382,9 +382,9 @@ static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
     } else {
       if (d->readDestByte) {
         //read from destination stream via callback
-        unsigned char out;
+        uint8_t out;
         //printf("%d\r\n", d->lzOff);
-        int ret = d->readDestByte(d->lzOff, &out);
+        TINF_STATUS ret = d->readDestByte(d->lzOff, &out);
         if (ret != 0) {
           return TINF_DATA_ERROR;
         }
@@ -401,7 +401,7 @@ static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 }
 
 /* inflate an uncompressed block of data */
-static int tinf_inflate_uncompressed_block(TINF_DATA *d)
+static TINF_STATUS tinf_inflate_uncompressed_block(TINF_DATA *d)
 {
     if (d->curlen == 0) {
         unsigned int length, invlength;
@@ -425,7 +425,7 @@ static int tinf_inflate_uncompressed_block(TINF_DATA *d)
         return TINF_DONE;
     }
 
-    unsigned char c = uzlib_get_byte(d);
+    uint8_t c = uzlib_get_byte(d);
     TINF_PUT(d, c);
     return TINF_OK;
 }
@@ -449,7 +449,7 @@ void uzlib_init(void)
 }
 
 /* initialize decompression structure */
-void uzlib_uncompress_init(TINF_DATA *d, void *dict, unsigned int dictLen)
+void uzlib_uncompress_init(TINF_DATA *d, void *dict, size_t dictLen)
 {
    d->bitcount = 0;
    d->bfinal = 0;
@@ -461,10 +461,10 @@ void uzlib_uncompress_init(TINF_DATA *d, void *dict, unsigned int dictLen)
 }
 
 /* inflate next byte of compressed stream */
-int uzlib_uncompress(TINF_DATA *d)
+TINF_STATUS uzlib_uncompress(TINF_DATA *d)
 {
     do {
-        int res;
+        TINF_STATUS res;
 
         /* start a new block */
         if (d->btype == -1) {
@@ -517,10 +517,10 @@ next_blk:
     return TINF_OK;
 }
 
-int uzlib_uncompress_chksum(TINF_DATA *d)
+TINF_STATUS uzlib_uncompress_chksum(TINF_DATA *d)
 {
-    int res;
-    unsigned char *data = d->dest;
+    TINF_STATUS res;
+    uint8_t *data = d->dest;
     d->destRemaining = d->destSize;
 
     res = uzlib_uncompress(d);
@@ -539,7 +539,7 @@ int uzlib_uncompress_chksum(TINF_DATA *d)
     }
 
     if (res == TINF_DONE) {
-        unsigned int val;
+        uint32_t val;
 
         switch (d->checksum_type) {
 

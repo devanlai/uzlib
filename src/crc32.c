@@ -38,7 +38,7 @@
 
 #include "tinf.h"
 
-static const unsigned int tinf_crc32tab[16] = {
+static const uint32_t tinf_crc32tab[16] = {
    0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac, 0x76dc4190,
    0x6b6b51f4, 0x4db26158, 0x5005713c, 0xedb88320, 0xf00f9344,
    0xd6d6a3e8, 0xcb61b38c, 0x9b64c2b0, 0x86d3d2d4, 0xa00ae278,
@@ -46,10 +46,10 @@ static const unsigned int tinf_crc32tab[16] = {
 };
 
 /* crc is previous value for incremental computation, 0xffffffff initially */
-uint32_t uzlib_crc32(const void *data, unsigned int length, uint32_t crc)
+uint32_t uzlib_crc32(const void *data, size_t length, uint32_t crc)
 {
-   const unsigned char *buf = (const unsigned char *)data;
-   unsigned int i;
+   const uint8_t *buf = (const uint8_t *)data;
+   size_t i;
 
    for (i = 0; i < length; ++i)
    {
