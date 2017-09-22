@@ -536,6 +536,9 @@ TINF_STATUS uzlib_uncompress_chksum(TINF_DATA *d)
     case TINF_CHKSUM_CRC:
         d->checksum = uzlib_crc32(data, d->dest - data, d->checksum);
         break;
+
+    case TINF_CHKSUM_NONE:
+        break;
     }
 
     if (res == TINF_DONE) {
@@ -557,6 +560,9 @@ TINF_STATUS uzlib_uncompress_chksum(TINF_DATA *d)
             }
             // Uncompressed size. TODO: Check
             val = tinf_get_le_uint32(d);
+            break;
+
+        case TINF_CHKSUM_NONE:
             break;
         }
     }
