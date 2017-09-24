@@ -41,12 +41,12 @@
 #define FNAME    8
 #define FCOMMENT 16
 
-void tinf_skip_bytes(TINF_DATA *d, int num)
+static void tinf_skip_bytes(TINF_DATA *d, int num)
 {
     while (num--) uzlib_get_byte(d);
 }
 
-uint16_t tinf_get_uint16(TINF_DATA *d)
+static uint16_t tinf_get_uint16(TINF_DATA *d)
 {
     uint16_t v = uzlib_get_byte(d);
     v = (uzlib_get_byte(d) << 8) | v;

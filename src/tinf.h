@@ -52,29 +52,28 @@ typedef struct {
 
 struct TINF_DATA;
 typedef struct TINF_DATA {
-   const uint8_t *source;
-   /* If source above is NULL, this function will be used to read
-      next byte from source stream */
-   TINF_STATUS (*readSourceByte)(struct TINF_DATA *data, uint8_t *out);
+    const uint8_t *source;
+    /* If source above is NULL, this function will be used to read
+       next byte from source stream */
+    TINF_STATUS (*readSourceByte)(uint8_t *out);
 
-   unsigned int tag;
-   unsigned int bitcount;
+    unsigned int tag;
+    unsigned int bitcount;
 
-    /* Buffer start */
-    uint8_t *destStart;
-    /* Buffer total size */
-    size_t destSize;
-    /* Current pointer in buffer */
+    /* Current pointer in the output buffer */
     uint8_t *dest;
-    /* Remaining bytes in buffer */
-    size_t destRemaining;
 
-    /* if readDest is provided, it will use this function for
+    /* if readDestByte is provided, it will use this function for
        reading from the output stream, rather than assuming
        'dest' contains the entire output stream in memory
     */
     TINF_STATUS (*readDestByte)(int offset, uint8_t *out);
-    TINF_STATUS (*writeDestWord)(unsigned long data);
+
+    /* if writeDestByte is provided, it will use this function for
+       writing to the output stream, rather than writing into
+       the 'dest' buffer.
+    */
+    void (*writeDestByte)(uint8_t datum);
 
     /* Accumulating checksum */
     uint32_t checksum;
@@ -88,14 +87,23 @@ typedef struct TINF_DATA {
     size_t dict_size;
     size_t dict_idx;
 
-   TINF_TREE ltree; /* dynamic length/symbol tree */
-   TINF_TREE dtree; /* dynamic distance tree */
+    TINF_TREE ltree; /* dynamic length/symbol tree */
+    TINF_TREE dtree; /* dynamic distance tree */
 } TINF_DATA;
 
 #define TINF_PUT(d, c) \
     { \
-        *d->dest++ = c; \
-        if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
+        if (d->writeDestByte) { \
+            d->writeDestByte(c); \
+        } else { \
+            *d->dest++ = c; \
+        } \
+        if (d->dict_ring) { \
+            d->dict_ring[d->dict_idx++] = c; \
+            if (d->dict_idx == d->dict_size) { \
+                d->dict_idx = 0; \
+            } \
+        } \
     }
 
 uint8_t TINFCC uzlib_get_byte(TINF_DATA *d);
@@ -104,8 +112,8 @@ uint8_t TINFCC uzlib_get_byte(TINF_DATA *d);
 
 void TINFCC uzlib_init(void);
 void TINFCC uzlib_uncompress_init(TINF_DATA *d, void *dict, size_t dictLen);
-TINF_STATUS TINFCC uzlib_uncompress(TINF_DATA *d);
-TINF_STATUS TINFCC uzlib_uncompress_chksum(TINF_DATA *d);
+TINF_STATUS TINFCC uzlib_uncompress(TINF_DATA *d, size_t out_len);
+TINF_STATUS TINFCC uzlib_uncompress_chksum(TINF_DATA *d, size_t out_len);
 
 uint8_t TINFCC uzlib_zlib_parse_header(TINF_DATA *d);
 TINF_STATUS TINFCC uzlib_gzip_parse_header(TINF_DATA *d);

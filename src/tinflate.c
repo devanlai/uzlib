@@ -174,9 +174,9 @@ uint8_t uzlib_get_byte(TINF_DATA *d)
     if (d->source) {
         return *d->source++;
     } else {
-      uint8_t out;
-      d->readSourceByte(d, &out);
-      return out;
+        uint8_t out;
+        d->readSourceByte(&out);
+        return out;
     }    
 }
 
@@ -380,20 +380,28 @@ static TINF_STATUS tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TRE
             d->lzOff = 0;
         }
     } else {
-      if (d->readDestByte) {
-        //read from destination stream via callback
-        uint8_t out;
-        //printf("%d\r\n", d->lzOff);
-        TINF_STATUS ret = d->readDestByte(d->lzOff, &out);
-        if (ret != 0) {
-          return TINF_DATA_ERROR;
+        if (d->readDestByte) {
+            //read from destination stream via callback
+            uint8_t out;
+            TINF_STATUS ret = d->readDestByte(d->lzOff, &out);
+            if (ret != TINF_OK) {
+                return TINF_DATA_ERROR;
+            }
+            if (d->writeDestByte) {
+                d->writeDestByte(out);
+            } else {
+                *d->dest++ = out;
+            }
+        } else {
+            //read from destination stream from memory
+            if (d->writeDestByte) {
+                d->writeDestByte(d->dest[d->lzOff]);
+            } else {
+                *d->dest = d->dest[d->lzOff];
+                d->dest++;
+            }
+            
         }
-        d->dest[0] = out;
-      } else {
-        //read from destination stream from memory
-        d->dest[0] = d->dest[d->lzOff];
-      }
-      d->dest++;
     }
 
     d->curlen--;
@@ -451,17 +459,17 @@ void uzlib_init(void)
 /* initialize decompression structure */
 void uzlib_uncompress_init(TINF_DATA *d, void *dict, size_t dictLen)
 {
-   d->bitcount = 0;
-   d->bfinal = 0;
-   d->btype = -1;
-   d->dict_size = dictLen;
-   d->dict_ring = dict;
-   d->dict_idx = 0;
-   d->curlen = 0;
+    d->bitcount = 0;
+    d->bfinal = 0;
+    d->btype = -1;
+    d->dict_size = dictLen;
+    d->dict_ring = dict;
+    d->dict_idx = 0;
+    d->curlen = 0;
 }
 
 /* inflate next byte of compressed stream */
-TINF_STATUS uzlib_uncompress(TINF_DATA *d)
+TINF_STATUS uzlib_uncompress(TINF_DATA *d, size_t out_len)
 {
     do {
         TINF_STATUS res;
@@ -512,18 +520,17 @@ next_blk:
             return res;
         }
 
-    } while (--d->destRemaining);
+    } while (--out_len);
 
     return TINF_OK;
 }
 
-TINF_STATUS uzlib_uncompress_chksum(TINF_DATA *d)
+TINF_STATUS uzlib_uncompress_chksum(TINF_DATA *d, size_t out_len)
 {
     TINF_STATUS res;
     uint8_t *data = d->dest;
-    d->destRemaining = d->destSize;
 
-    res = uzlib_uncompress(d);
+    res = uzlib_uncompress(d, out_len);
 
     if (res < 0) return res;
 
