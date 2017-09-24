@@ -116,10 +116,8 @@ int main(int argc, char *argv[])
 
     d.dest = dest;
     /* decompress byte by byte; can be any other length */
-    d.destSize = 1;
-
     do {
-        res = uzlib_uncompress_chksum(&d);
+        res = uzlib_uncompress_chksum(&d, 1);
     } while (res == TINF_OK);
 
     if (res != TINF_DONE) {

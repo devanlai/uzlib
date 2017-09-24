@@ -48,7 +48,7 @@
 
 #define OUTPUT_BUFFER_SIZE (4)
 int output_position;  //position in output_buffer
-unsigned char output_buffer[OUTPUT_BUFFER_SIZE];
+uint8_t output_buffer[OUTPUT_BUFFER_SIZE];
 
 FILE *fin, *fout;
 
@@ -61,9 +61,9 @@ void exit_error(const char *what)
 //readDest - read a byte from the decompressed destination file, at 'offset' from the current position.
 //offset will be the negative offset back into the written output stream.
 //note: this does not ever write to the output stream; it simply reads from it.
-static unsigned int readDestByte(int offset, unsigned char *out)
+static TINF_STATUS readDestByte(int offset, uint8_t *out)
 {
-  unsigned char data;
+  uint8_t data;
 
   //delta between our position in output_buffer, and the desired offset in the output stream
   int delta = output_position + offset;
@@ -106,26 +106,26 @@ static unsigned int readDestByte(int offset, unsigned char *out)
 
     *out = data;
 
-    return 0;  
+    return TINF_OK;
 }
 
 /*
  * readSourceByte - consume and return a byte from the source stream into the argument 'out'.
  *                  returns 0 on success, or -1 on error.
  */
-static unsigned int readSourceByte(struct TINF_DATA *data, unsigned char *out)
+static TINF_STATUS readSourceByte(uint8_t *out)
 {
   if (fread(out, 1, 1, fin) != 1) {
     exit_error("read");
     return -1;
   }
-  return 0;
+  return TINF_OK;
 }
 
 int main(int argc, char *argv[])
 {
     unsigned int len, dlen, outlen;
-    const unsigned char *source;
+    const uint8_t *source;
     int res;
 
     printf("tgunzip\n\n");
@@ -150,7 +150,6 @@ int main(int argc, char *argv[])
     outlen = 0;
     d.readSourceByte = readSourceByte;
     d.readDestByte = readDestByte;
-    d.destSize = 1;
 
     res = uzlib_gzip_parse_header(&d);
     if (res != TINF_OK) {
@@ -165,7 +164,7 @@ int main(int argc, char *argv[])
 
     do {
         d.dest = &output_buffer[output_position];
-        res = uzlib_uncompress_chksum(&d);
+        res = uzlib_uncompress_chksum(&d, 1);
         if (res != TINF_OK) break;
         output_position++;
         //if the destination has been written to, write it out to disk
